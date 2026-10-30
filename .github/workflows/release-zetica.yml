@@ -1,0 +1,105 @@
+﻿name: Build & Release Zetica Word
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g. v0.12.0)'
+        required: true
+        default: 'v0.12.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows x64 (MSI & Portable)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install WiX Toolset v5
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2
+
+      - name: Build & Package Windows Artifacts
+        shell: pwsh
+        run: |
+          $ver = if ("${{ github.event.inputs.tag_name }}") { "${{ github.event.inputs.tag_name }}".TrimStart('v') } else { "0.12.0" }
+          $env:WORDCRAFT_VERSION = $ver
+          pwsh packaging/windows/package.ps1 -Arch x64
+
+      - name: Prepare Release Assets
+        shell: pwsh
+        run: |
+          $ver = if ("${{ github.event.inputs.tag_name }}") { "${{ github.event.inputs.tag_name }}".TrimStart('v') } else { "0.12.0" }
+          $dist = "dist/release"
+          mkdir -Force release_assets
+
+          # Copy files from dist/release
+          Copy-Item $dist/*-windows-x64.msi release_assets/ -Force
+          Copy-Item $dist/*-windows-x64-portable.zip release_assets/ -Force
+
+          # Copy canonical zetica naming
+          Copy-Item $dist/*-windows-x64.msi "release_assets/zetica-word-$ver-windows-x64.msi" -Force
+          Copy-Item $dist/*-windows-x64-portable.zip "release_assets/zetica-word-$ver-windows-x64-portable.zip" -Force
+
+          # Generate SHA256SUMS.txt
+          Get-ChildItem release_assets/* -File | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$h  $($_.Name)"
+          } | Set-Content release_assets/SHA256SUMS.txt -Encoding ascii
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zetica-word-windows-x64
+          path: release_assets/*
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: zetica-word-windows-x64
+          path: release_assets
+
+      - name: Publish Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          name: Zetica Word ${{ github.event.inputs.tag_name || github.ref_name }}
+          body: |
+            ## Zetica Word Release ${{ github.event.inputs.tag_name || github.ref_name }}
+
+            Official Zetica Word writing and document design for the **Zetica Creative Suite**. Rebuilt from scratch in pure Rust.
+
+            ### Included Packages:
+            - zetica-word-${{ github.event.inputs.tag_name || github.ref_name }}-windows-x64.msi: Native Windows Installer
+            - zetica-word-${{ github.event.inputs.tag_name || github.ref_name }}-windows-x64-portable.zip: Portable standalone zip
+            - $Id-${{ github.event.inputs.tag_name || github.ref_name }}-windows-x64.msi: Upstream compatible package
+
+            Developed by **Sam Pangilinan** ([zeticuz.xyz](https://www.zeticuz.xyz/)).
+          files: release_assets/*
+          draft: false
+          prerelease: false

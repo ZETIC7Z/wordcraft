@@ -1,9 +1,9 @@
-//! WordCraft desktop app.
+﻿//! WordCraft desktop app.
 //!
-//! Usage: `wordcraft [--control <port>] [--sample] [files…]`; `--help` prints `USAGE`.
+//! Usage: `wordcraft [--control <port>] [--sample] [filesâ€¦]`; `--help` prints `USAGE`.
 //!
 //! `--control <port>` (or `WORDCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control server:
-//! `{"id":1,"key":"…","method":"engine.execute","params":{"command":"text.insert","params":{"text":"Hi"}}}`.
+//! `{"id":1,"key":"â€¦","method":"engine.execute","params":{"command":"text.insert","params":{"text":"Hi"}}}`.
 //! Every request needs the key the app writes to `<settings>/control-key.<instance>` (mode 0600,
 //! removed on exit). See `docs/control-protocol.md`.
 #![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
@@ -259,7 +259,7 @@ fn write_prefs(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
     written
 }
 
-/// Native file dialogs, shown without blocking the window (`file_dialogs`, #94), File › Print
+/// Native file dialogs, shown without blocking the window (`file_dialogs`, #94), File â€º Print
 /// through the system spooler (`print`), the system clipboard's text, formatted copies,
 /// pictures and format names (`clipboard`, #45, #584, #687, #833), the system's animation setting
 /// (`animations`), and making WordCraft the default app for Word documents (`default_apps`, #295).
@@ -292,10 +292,10 @@ fn app_icon() -> Option<egui::IconData> {
 }
 
 const USAGE: &str = "\
-wordcraft — the WordCraft desktop app
+wordcraft â€” the WordCraft desktop app
 
 USAGE:
-  wordcraft [--sample] [--control PORT] [FILE…]
+  wordcraft [--sample] [--control PORT] [FILEâ€¦]
 
 OPTIONS:
   --sample            open the sample document
@@ -330,7 +330,7 @@ fn text_args() -> (Vec<String>, Vec<std::path::PathBuf>) {
 }
 
 /// The arguments without the ones macOS adds when it launches an app (#1103): `-psn_0_12345`, and
-/// the `-NS…` / `-Apple…` options (`-AppleLanguages (en)`, `-NSDocumentRevisionsDebugMode YES`) with
+/// the `-NSâ€¦` / `-Appleâ€¦` options (`-AppleLanguages (en)`, `-NSDocumentRevisionsDebugMode YES`) with
 /// the value after each. They are not files, and opening them as files fails.
 fn without_launch_args(args: Vec<String>) -> Vec<String> {
     let mut kept = Vec::with_capacity(args.len());
@@ -382,7 +382,7 @@ fn main() -> eframe::Result {
     let mut files = Vec::new();
     let mut sample = false;
     let (args, other_files) = text_args();
-    // Only macOS (Finder / LaunchServices) adds these; elsewhere `-NS…` could be a real file name.
+    // Only macOS (Finder / LaunchServices) adds these; elsewhere `-NSâ€¦` could be a real file name.
     let args = if cfg!(target_os = "macos") { without_launch_args(args) } else { args };
     let mut bad_control: Option<Option<String>> = None;
     let mut args = args.into_iter().peekable();
@@ -431,7 +431,7 @@ fn main() -> eframe::Result {
     }
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("WordCraft")
+            .with_title("Zetica Word")
             .with_app_id("ai.storyteller.wordcraft")
             .with_inner_size([1440.0, 920.0])
             .with_min_inner_size([760.0, 480.0])
@@ -475,8 +475,7 @@ fn main() -> eframe::Result {
     let apple_events = apple_events::AppleEvents::install();
     #[cfg(target_os = "macos")]
     let apple_events = &apple_events;
-    eframe::run_native(
-        "WordCraft",
+    eframe::run_native("Zetica Word",
         options,
         Box::new(move |cc| {
             // The system region picks the new document's paper, the units and the decimal
@@ -490,7 +489,7 @@ fn main() -> eframe::Result {
             app.set_startup_update_check(true);
             load_prefs(&mut app);
             load_user_dictionary(&mut app);
-            // A region chosen in File › Options replaces the system's for the first blank
+            // A region chosen in File â€º Options replaces the system's for the first blank
             // document too (#838).
             if !sample && app.session.prefs.region.is_some() {
                 let doc = app.session.blank_document();
@@ -521,7 +520,7 @@ fn main() -> eframe::Result {
                 key_file = file;
             }
             // Nothing to open (no files, no sample, no control channel driving the editor): start
-            // on File › Home, as Word does (#766), unless the Start screen option is off. Files
+            // on File â€º Home, as Word does (#766), unless the Start screen option is off. Files
             // macOS hands over later open on top of it and close it (`apple_events`).
             if files.is_empty() && other_files.is_empty() && !sample && control_port.is_none() {
                 app.start_screen();
@@ -660,3 +659,4 @@ mod prefs_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
